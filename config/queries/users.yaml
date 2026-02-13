@@ -1,0 +1,173 @@
+# User-related database queries
+version: "1.0"
+metadata:
+  category: "users"
+  tags:
+    - "user-management"
+    - "authentication"
+
+queries:
+  # Query 1: Get user by ID
+  - name: "get_user_by_id"
+    title: "Get User By ID"
+    description: "Retrieves a single user record by their unique ID"
+
+    sql: |
+      SELECT
+        user_id,
+        username,
+        email,
+        created_at,
+        last_login
+      FROM users
+      WHERE user_id = :user_id
+      LIMIT 1
+
+    parameters:
+      - name: "user_id"
+        type: "integer"
+        description: "The unique identifier for the user"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      description: "User query results"
+      properties:
+        results:
+          type: "array"
+          description: "Array of user records"
+          items:
+            type: "object"
+            properties:
+              user_id:
+                type: "integer"
+                description: "User's unique identifier"
+              username:
+                type: "string"
+                description: "User's username"
+              email:
+                type: "string"
+                description: "User's email address"
+              created_at:
+                type: "string"
+                format: "date-time"
+                description: "Account creation timestamp"
+              last_login:
+                type: "string"
+                format: "date-time"
+                description: "Last login timestamp"
+        count:
+          type: "integer"
+          description: "Number of results returned"
+
+  # Query 2: Search users with pagination
+  - name: "search_users"
+    title: "Search Users"
+    description: "Search users by username or email with pagination support"
+
+    sql: |
+      SELECT
+        user_id,
+        username,
+        email,
+        created_at
+      FROM users
+      WHERE
+        (username LIKE '%' || :search_term || '%' OR
+         email LIKE '%' || :search_term || '%')
+      ORDER BY created_at DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "search_term"
+        type: "string"
+        description: "Search term to match against username or email"
+        required: true
+        constraints:
+          minLength: 1
+          maxLength: 100
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of results to return"
+        required: false
+        default: 10
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of results to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      description: "Search results"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              user_id:
+                type: "integer"
+              username:
+                type: "string"
+              email:
+                type: "string"
+              created_at:
+                type: "string"
+                format: "date-time"
+        count:
+          type: "integer"
+          description: "Number of results returned"
+
+  # Query 3: Get user statistics
+  - name: "get_user_statistics"
+    title: "Get User Statistics"
+    description: "Retrieves aggregate statistics about users"
+
+    sql: |
+      SELECT
+        COUNT(*) as total_users,
+        COUNT(CASE WHEN last_login >= datetime('now', '-30 days') THEN 1 END) as active_users_30d,
+        COUNT(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 END) as new_users_7d,
+        MIN(created_at) as first_user_date,
+        MAX(created_at) as latest_user_date
+      FROM users
+
+    parameters: []
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              total_users:
+                type: "integer"
+                description: "Total number of users"
+              active_users_30d:
+                type: "integer"
+                description: "Users who logged in within the last 30 days"
+              new_users_7d:
+                type: "integer"
+                description: "Users created in the last 7 days"
+              first_user_date:
+                type: "string"
+                format: "date-time"
+                description: "Date of first user registration"
+              latest_user_date:
+                type: "string"
+                format: "date-time"
+                description: "Date of most recent user registration"
+        count:
+          type: "integer"

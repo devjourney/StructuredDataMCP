@@ -1,0 +1,18 @@
+# StructuredDataMCP Server Configuration
+
+server:
+  name: "SQLite Query Server"
+  version: "1.0.0"
+  description: "Read-only SQLite database query server"
+
+database:
+  path: "examples/sample.db"
+  pool_size: 5
+  timeout: 30  # Connection timeout in seconds
+
+security:
+  read_only: true
+  allowed_statements:
+    - SELECT
+  max_results: 1000  # Maximum rows returned per query
+  query_timeout: 30  # Query execution timeout in seconds

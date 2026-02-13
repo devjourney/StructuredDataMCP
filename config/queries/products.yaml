@@ -1,0 +1,176 @@
+# Product-related database queries
+version: "1.0"
+metadata:
+  category: "products"
+  tags:
+    - "inventory"
+    - "e-commerce"
+
+queries:
+  # Query 1: Get products by category
+  - name: "get_products_by_category"
+    title: "Get Products by Category"
+    description: "Retrieves all active products in a specific category"
+
+    sql: |
+      SELECT
+        p.product_id,
+        p.name,
+        p.description,
+        p.price,
+        p.stock_quantity,
+        c.category_name
+      FROM products p
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE c.category_id = :category_id
+      AND p.active = 1
+      ORDER BY p.name
+
+    parameters:
+      - name: "category_id"
+        type: "integer"
+        description: "The category ID to filter products by"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      description: "Product query results"
+      properties:
+        results:
+          type: "array"
+          description: "Array of product records"
+          items:
+            type: "object"
+            properties:
+              product_id:
+                type: "integer"
+                description: "Product's unique identifier"
+              name:
+                type: "string"
+                description: "Product name"
+              description:
+                type: "string"
+                description: "Product description"
+              price:
+                type: "number"
+                description: "Product price"
+              stock_quantity:
+                type: "integer"
+                description: "Available stock quantity"
+              category_name:
+                type: "string"
+                description: "Category name"
+        count:
+          type: "integer"
+          description: "Number of results returned"
+
+  # Query 2: Search products
+  - name: "search_products"
+    title: "Search Products"
+    description: "Search for products by name or description"
+
+    sql: |
+      SELECT
+        p.product_id,
+        p.name,
+        p.description,
+        p.price,
+        p.stock_quantity,
+        c.category_name
+      FROM products p
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE
+        (p.name LIKE '%' || :search_term || '%' OR
+         p.description LIKE '%' || :search_term || '%')
+      AND p.active = 1
+      ORDER BY p.name
+      LIMIT :limit
+
+    parameters:
+      - name: "search_term"
+        type: "string"
+        description: "Search term to match against product name or description"
+        required: true
+        constraints:
+          minLength: 1
+          maxLength: 100
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of results to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              product_id:
+                type: "integer"
+              name:
+                type: "string"
+              description:
+                type: "string"
+              price:
+                type: "number"
+              stock_quantity:
+                type: "integer"
+              category_name:
+                type: "string"
+        count:
+          type: "integer"
+
+  # Query 3: Get low stock products
+  - name: "get_low_stock_products"
+    title: "Get Low Stock Products"
+    description: "Retrieves products with stock below a specified threshold"
+
+    sql: |
+      SELECT
+        p.product_id,
+        p.name,
+        p.stock_quantity,
+        c.category_name
+      FROM products p
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE p.stock_quantity <= :threshold
+      AND p.active = 1
+      ORDER BY p.stock_quantity ASC, p.name
+
+    parameters:
+      - name: "threshold"
+        type: "integer"
+        description: "Stock quantity threshold"
+        required: false
+        default: 10
+        constraints:
+          minimum: 0
+          maximum: 100
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              product_id:
+                type: "integer"
+              name:
+                type: "string"
+              stock_quantity:
+                type: "integer"
+              category_name:
+                type: "string"
+        count:
+          type: "integer"

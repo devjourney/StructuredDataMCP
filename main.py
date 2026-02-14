@@ -1,6 +1,6 @@
 """StructuredDataMCP - Data-driven SQLite query MCP server."""
 
-import asyncio
+import sys
 from pathlib import Path
 from fastmcp import FastMCP
 from src.structureddatamcp.loader import QueryLoader
@@ -17,10 +17,8 @@ PROJECT_ROOT = Path(__file__).parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 
 
-async def initialize_tools():
+def initialize_tools():
     """Load query definitions and register tools on startup."""
-    import sys
-
     # Load server settings
     loader = QueryLoader(CONFIG_DIR)
     settings = loader.load_settings()
@@ -55,9 +53,10 @@ async def initialize_tools():
     print(f"✓ Server: {settings.server.name} v{settings.server.version}", file=sys.stderr)
 
 
-if __name__ == "__main__":
-    # Initialize tools before starting server
-    asyncio.run(initialize_tools())
+# Initialize tools at module load time
+initialize_tools()
 
+
+if __name__ == "__main__":
     # Run the server
     mcp.run()

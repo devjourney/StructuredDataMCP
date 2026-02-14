@@ -80,7 +80,7 @@ async def {query_def.name}({params_signature}):
             name=query_def.name,
             title=query_def.title,
             description=query_def.description,
-            output_schema=query_def.output_schema.model_dump() if query_def.output_schema else None,
+            output_schema=query_def.output_schema.model_dump(exclude_none=True) if query_def.output_schema else None,
         )
 
         # Override parameters with our custom schema to ensure correct types and constraints

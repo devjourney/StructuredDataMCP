@@ -1,0 +1,270 @@
+# Review-related database queries
+version: "1.0"
+metadata:
+  category: "reviews"
+  tags:
+    - "user-generated-content"
+    - "ratings"
+
+queries:
+  # Query 1: Get reviews for a specific product
+  - name: "get_product_reviews"
+    title: "Get Product Reviews"
+    description: "Retrieves all reviews for a specific product with user information"
+
+    sql: |
+      SELECT
+        COALESCE(r.review_id, 0) as review_id,
+        COALESCE(r.product_id, 0) as product_id,
+        COALESCE(r.user_id, 0) as user_id,
+        COALESCE(u.username, '') as username,
+        COALESCE(u.email, '') as email,
+        COALESCE(r.rating, 0) as rating,
+        COALESCE(r.title, '') as title,
+        COALESCE(r.comment, '') as comment,
+        COALESCE(r.verified_purchase, 0) as verified_purchase,
+        COALESCE(r.helpful_count, 0) as helpful_count,
+        COALESCE(r.created_at, '') as created_at,
+        COALESCE(r.updated_at, '') as updated_at
+      FROM reviews r
+      INNER JOIN users u ON r.user_id = u.user_id
+      WHERE r.product_id = :product_id
+      ORDER BY r.created_at DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "product_id"
+        type: "integer"
+        description: "Product ID to get reviews for"
+        required: true
+        constraints:
+          minimum: 1
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of reviews to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of reviews to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              review_id:
+                type: "integer"
+                description: "Unique review identifier"
+              product_id:
+                type: "integer"
+                description: "Product being reviewed"
+              user_id:
+                type: "integer"
+                description: "User who wrote the review"
+              username:
+                type: "string"
+                description: "Username of the reviewer"
+              email:
+                type: "string"
+                description: "Email of the reviewer"
+              rating:
+                type: "integer"
+                description: "Rating score (1-5)"
+              title:
+                type: "string"
+                description: "Review title"
+              comment:
+                type: "string"
+                description: "Review content"
+              verified_purchase:
+                type: "integer"
+                description: "Whether purchase was verified (0 or 1)"
+              helpful_count:
+                type: "integer"
+                description: "Number of helpful votes"
+              created_at:
+                type: "string"
+                description: "Date review was posted"
+              updated_at:
+                type: "string"
+                description: "Date review was last updated"
+        count:
+          type: "integer"
+
+  # Query 2: Get all reviews written by a specific user
+  - name: "get_user_reviews"
+    title: "Get User Reviews"
+    description: "Retrieves all reviews written by a specific user with product information"
+
+    sql: |
+      SELECT
+        COALESCE(r.review_id, 0) as review_id,
+        COALESCE(r.product_id, 0) as product_id,
+        COALESCE(p.name, '') as product_name,
+        COALESCE(c.category_name, '') as category_name,
+        COALESCE(r.rating, 0) as rating,
+        COALESCE(r.title, '') as title,
+        COALESCE(r.comment, '') as comment,
+        COALESCE(r.verified_purchase, 0) as verified_purchase,
+        COALESCE(r.helpful_count, 0) as helpful_count,
+        COALESCE(r.created_at, '') as created_at,
+        COALESCE(r.updated_at, '') as updated_at
+      FROM reviews r
+      INNER JOIN products p ON r.product_id = p.product_id
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE r.user_id = :user_id
+      ORDER BY r.created_at DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "user_id"
+        type: "integer"
+        description: "User ID to get reviews for"
+        required: true
+        constraints:
+          minimum: 1
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of reviews to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of reviews to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              review_id:
+                type: "integer"
+                description: "Unique review identifier"
+              product_id:
+                type: "integer"
+                description: "Product being reviewed"
+              product_name:
+                type: "string"
+                description: "Name of the reviewed product"
+              category_name:
+                type: "string"
+                description: "Category of the product"
+              rating:
+                type: "integer"
+                description: "Rating score (1-5)"
+              title:
+                type: "string"
+                description: "Review title"
+              comment:
+                type: "string"
+                description: "Review content"
+              verified_purchase:
+                type: "integer"
+                description: "Whether purchase was verified (0 or 1)"
+              helpful_count:
+                type: "integer"
+                description: "Number of helpful votes"
+              created_at:
+                type: "string"
+                description: "Date review was posted"
+              updated_at:
+                type: "string"
+                description: "Date review was last updated"
+        count:
+          type: "integer"
+
+  # Query 3: Get aggregate statistics for product reviews
+  - name: "get_product_review_stats"
+    title: "Get Product Review Statistics"
+    description: "Retrieves aggregate statistics and rating distribution for a product's reviews"
+
+    sql: |
+      SELECT
+        COALESCE(p.product_id, 0) as product_id,
+        COALESCE(p.name, '') as product_name,
+        COALESCE(COUNT(r.review_id), 0) as total_reviews,
+        COALESCE(AVG(r.rating), 0) as average_rating,
+        COALESCE(SUM(CASE WHEN r.rating = 5 THEN 1 ELSE 0 END), 0) as five_star_count,
+        COALESCE(SUM(CASE WHEN r.rating = 4 THEN 1 ELSE 0 END), 0) as four_star_count,
+        COALESCE(SUM(CASE WHEN r.rating = 3 THEN 1 ELSE 0 END), 0) as three_star_count,
+        COALESCE(SUM(CASE WHEN r.rating = 2 THEN 1 ELSE 0 END), 0) as two_star_count,
+        COALESCE(SUM(CASE WHEN r.rating = 1 THEN 1 ELSE 0 END), 0) as one_star_count,
+        COALESCE(SUM(r.verified_purchase), 0) as verified_purchase_count
+      FROM products p
+      LEFT JOIN reviews r ON p.product_id = r.product_id
+      WHERE p.product_id = :product_id
+      GROUP BY p.product_id, p.name
+
+    parameters:
+      - name: "product_id"
+        type: "integer"
+        description: "Product ID to get review statistics for"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              product_id:
+                type: "integer"
+                description: "Product identifier"
+              product_name:
+                type: "string"
+                description: "Name of the product"
+              total_reviews:
+                type: "integer"
+                description: "Total number of reviews"
+              average_rating:
+                type: "number"
+                description: "Average rating score"
+              five_star_count:
+                type: "integer"
+                description: "Number of 5-star reviews"
+              four_star_count:
+                type: "integer"
+                description: "Number of 4-star reviews"
+              three_star_count:
+                type: "integer"
+                description: "Number of 3-star reviews"
+              two_star_count:
+                type: "integer"
+                description: "Number of 2-star reviews"
+              one_star_count:
+                type: "integer"
+                description: "Number of 1-star reviews"
+              verified_purchase_count:
+                type: "integer"
+                description: "Number of verified purchase reviews"
+        count:
+          type: "integer"

@@ -1,0 +1,152 @@
+# Shopping cart-related database queries
+version: "1.0"
+metadata:
+  category: "cart"
+  tags:
+    - "e-commerce"
+    - "shopping"
+
+queries:
+  # Query 1: Get all items in a user's shopping cart
+  - name: "get_user_cart"
+    title: "Get User Cart"
+    description: "Retrieves all items in a user's shopping cart with product details and current pricing"
+
+    sql: |
+      SELECT
+        COALESCE(ci.cart_item_id, 0) as cart_item_id,
+        COALESCE(ci.user_id, 0) as user_id,
+        COALESCE(ci.product_id, 0) as product_id,
+        COALESCE(p.name, '') as product_name,
+        COALESCE(p.description, '') as product_description,
+        COALESCE(p.price, 0) as unit_price,
+        COALESCE(p.stock_quantity, 0) as stock_quantity,
+        COALESCE(p.active, 0) as product_active,
+        COALESCE(ci.quantity, 0) as quantity,
+        COALESCE(p.price * ci.quantity, 0) as line_total,
+        COALESCE(c.category_name, '') as category_name,
+        COALESCE(ci.added_at, '') as added_at,
+        COALESCE(ci.updated_at, '') as updated_at
+      FROM cart_items ci
+      INNER JOIN products p ON ci.product_id = p.product_id
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE ci.user_id = :user_id
+      ORDER BY ci.added_at DESC
+
+    parameters:
+      - name: "user_id"
+        type: "integer"
+        description: "User ID to get cart items for"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              cart_item_id:
+                type: "integer"
+                description: "Unique cart item identifier"
+              user_id:
+                type: "integer"
+                description: "User who owns this cart item"
+              product_id:
+                type: "integer"
+                description: "Product in the cart"
+              product_name:
+                type: "string"
+                description: "Name of the product"
+              product_description:
+                type: "string"
+                description: "Description of the product"
+              unit_price:
+                type: "number"
+                description: "Current price per unit"
+              stock_quantity:
+                type: "integer"
+                description: "Available stock quantity"
+              product_active:
+                type: "integer"
+                description: "Whether product is active (0 or 1)"
+              quantity:
+                type: "integer"
+                description: "Quantity of this product in cart"
+              line_total:
+                type: "number"
+                description: "Total price for this line item (unit_price * quantity)"
+              category_name:
+                type: "string"
+                description: "Product category"
+              added_at:
+                type: "string"
+                description: "Date item was added to cart"
+              updated_at:
+                type: "string"
+                description: "Date item was last updated"
+        count:
+          type: "integer"
+
+  # Query 2: Get summary statistics for a user's shopping cart
+  - name: "get_cart_summary"
+    title: "Get Cart Summary"
+    description: "Retrieves aggregate statistics and totals for a user's shopping cart"
+
+    sql: |
+      SELECT
+        COALESCE(u.user_id, 0) as user_id,
+        COALESCE(u.username, '') as username,
+        COALESCE(COUNT(ci.cart_item_id), 0) as total_items,
+        COALESCE(SUM(ci.quantity), 0) as total_quantity,
+        COALESCE(SUM(p.price * ci.quantity), 0) as cart_total,
+        COALESCE(SUM(CASE WHEN p.active = 0 THEN 1 ELSE 0 END), 0) as inactive_items,
+        COALESCE(SUM(CASE WHEN p.stock_quantity < ci.quantity THEN 1 ELSE 0 END), 0) as out_of_stock_items
+      FROM users u
+      LEFT JOIN cart_items ci ON u.user_id = ci.user_id
+      LEFT JOIN products p ON ci.product_id = p.product_id
+      WHERE u.user_id = :user_id
+      GROUP BY u.user_id, u.username
+
+    parameters:
+      - name: "user_id"
+        type: "integer"
+        description: "User ID to get cart summary for"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              user_id:
+                type: "integer"
+                description: "User identifier"
+              username:
+                type: "string"
+                description: "Username"
+              total_items:
+                type: "integer"
+                description: "Number of distinct items in cart"
+              total_quantity:
+                type: "integer"
+                description: "Total quantity of all items"
+              cart_total:
+                type: "number"
+                description: "Total value of cart"
+              inactive_items:
+                type: "integer"
+                description: "Number of inactive products in cart"
+              out_of_stock_items:
+                type: "integer"
+                description: "Number of items with insufficient stock"
+        count:
+          type: "integer"

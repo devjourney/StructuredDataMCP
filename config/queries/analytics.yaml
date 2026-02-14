@@ -1,0 +1,252 @@
+# Analytics-related database queries
+version: "1.0"
+metadata:
+  category: "analytics"
+  tags:
+    - "reporting"
+    - "business-intelligence"
+
+queries:
+  # Query 1: Get users who have ordered a specific product
+  - name: "get_users_by_product"
+    title: "Get Users By Product"
+    description: "Retrieves all users who have ordered a specific product with purchase statistics"
+
+    sql: |
+      SELECT
+        COALESCE(u.user_id, 0) as user_id,
+        COALESCE(u.username, '') as username,
+        COALESCE(u.email, '') as email,
+        COALESCE(COUNT(DISTINCT o.order_id), 0) as order_count,
+        COALESCE(SUM(oi.quantity), 0) as total_quantity_purchased,
+        COALESCE(SUM(oi.subtotal), 0) as total_spent_on_product,
+        COALESCE(MAX(o.created_at), '') as last_order_date
+      FROM users u
+      INNER JOIN orders o ON u.user_id = o.user_id
+      INNER JOIN order_items oi ON o.order_id = oi.order_id
+      WHERE oi.product_id = :product_id
+      GROUP BY u.user_id, u.username, u.email
+      ORDER BY total_quantity_purchased DESC, last_order_date DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "product_id"
+        type: "integer"
+        description: "Product ID to find users for"
+        required: true
+        constraints:
+          minimum: 1
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of users to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of users to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              user_id:
+                type: "integer"
+                description: "User identifier"
+              username:
+                type: "string"
+                description: "Username"
+              email:
+                type: "string"
+                description: "Email of the user"
+              order_count:
+                type: "integer"
+                description: "Number of orders containing this product"
+              total_quantity_purchased:
+                type: "integer"
+                description: "Total quantity of this product purchased by user"
+              total_spent_on_product:
+                type: "number"
+                description: "Total amount spent on this product"
+              last_order_date:
+                type: "string"
+                description: "Date of most recent order containing this product"
+        count:
+          type: "integer"
+
+  # Query 2: Get most popular products by sales
+  - name: "get_popular_products"
+    title: "Get Popular Products"
+    description: "Retrieves products ranked by total quantity sold with revenue and rating statistics"
+
+    sql: |
+      SELECT
+        COALESCE(p.product_id, 0) as product_id,
+        COALESCE(p.name, '') as product_name,
+        COALESCE(p.price, 0) as current_price,
+        COALESCE(c.category_name, '') as category_name,
+        COALESCE(COUNT(DISTINCT oi.order_id), 0) as order_count,
+        COALESCE(SUM(oi.quantity), 0) as total_quantity_sold,
+        COALESCE(SUM(oi.subtotal), 0) as total_revenue,
+        COALESCE(AVG(r.rating), 0) as average_rating,
+        COALESCE(COUNT(DISTINCT r.review_id), 0) as review_count
+      FROM products p
+      LEFT JOIN order_items oi ON p.product_id = oi.product_id
+      LEFT JOIN reviews r ON p.product_id = r.product_id
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE p.active = 1
+      GROUP BY p.product_id, p.name, p.price, c.category_name
+      ORDER BY total_quantity_sold DESC, total_revenue DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of products to return"
+        required: false
+        default: 10
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of products to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              product_id:
+                type: "integer"
+                description: "Product identifier"
+              product_name:
+                type: "string"
+                description: "Name of the product"
+              current_price:
+                type: "number"
+                description: "Current product price"
+              category_name:
+                type: "string"
+                description: "Product category"
+              order_count:
+                type: "integer"
+                description: "Number of orders containing this product"
+              total_quantity_sold:
+                type: "integer"
+                description: "Total quantity sold"
+              total_revenue:
+                type: "number"
+                description: "Total revenue generated by this product"
+              average_rating:
+                type: "number"
+                description: "Average review rating"
+              review_count:
+                type: "integer"
+                description: "Number of reviews"
+        count:
+          type: "integer"
+
+  # Query 3: Get top customers by lifetime value
+  - name: "get_top_customers"
+    title: "Get Top Customers"
+    description: "Retrieves customers ranked by total spending with order statistics"
+
+    sql: |
+      SELECT
+        COALESCE(u.user_id, 0) as user_id,
+        COALESCE(u.username, '') as username,
+        COALESCE(u.email, '') as email,
+        COALESCE(u.created_at, '') as registration_date,
+        COALESCE(COUNT(DISTINCT o.order_id), 0) as total_orders,
+        COALESCE(SUM(o.total_amount), 0) as total_spent,
+        COALESCE(AVG(o.total_amount), 0) as average_order_value,
+        COALESCE(MIN(o.created_at), '') as first_order_date,
+        COALESCE(MAX(o.created_at), '') as last_order_date,
+        COALESCE(COUNT(DISTINCT r.review_id), 0) as review_count
+      FROM users u
+      LEFT JOIN orders o ON u.user_id = o.user_id
+      LEFT JOIN reviews r ON u.user_id = r.user_id
+      GROUP BY u.user_id, u.username, u.email, u.created_at
+      HAVING total_orders > 0
+      ORDER BY total_spent DESC, total_orders DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of customers to return"
+        required: false
+        default: 10
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of customers to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              user_id:
+                type: "integer"
+                description: "User identifier"
+              username:
+                type: "string"
+                description: "Username of the customer"
+              email:
+                type: "string"
+                description: "Email of the customer"
+              registration_date:
+                type: "string"
+                description: "Date customer registered"
+              total_orders:
+                type: "integer"
+                description: "Total number of orders placed"
+              total_spent:
+                type: "number"
+                description: "Total amount spent across all orders"
+              average_order_value:
+                type: "number"
+                description: "Average order value"
+              first_order_date:
+                type: "string"
+                description: "Date of first order"
+              last_order_date:
+                type: "string"
+                description: "Date of most recent order"
+              review_count:
+                type: "integer"
+                description: "Number of reviews written"
+        count:
+          type: "integer"

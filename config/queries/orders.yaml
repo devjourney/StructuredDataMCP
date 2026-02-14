@@ -1,0 +1,291 @@
+# Order-related database queries
+version: "1.0"
+metadata:
+  category: "orders"
+  tags:
+    - "e-commerce"
+    - "order-management"
+
+queries:
+  # Query 1: Get user's order history
+  - name: "get_user_orders"
+    title: "Get User Orders"
+    description: "Retrieves all orders for a specific user with order summary"
+
+    sql: |
+      SELECT
+        o.order_id,
+        COALESCE(o.order_status, '') as order_status,
+        COALESCE(o.total_amount, 0) as total_amount,
+        COALESCE(o.shipping_address, '') as shipping_address,
+        COALESCE(o.created_at, '') as created_at,
+        COALESCE(o.shipped_at, '') as shipped_at,
+        COALESCE(o.delivered_at, '') as delivered_at,
+        COUNT(oi.order_item_id) as item_count,
+        COALESCE(u.username, '') as username,
+        COALESCE(u.email, '') as email
+      FROM orders o
+      INNER JOIN users u ON o.user_id = u.user_id
+      LEFT JOIN order_items oi ON o.order_id = oi.order_id
+      WHERE o.user_id = :user_id
+      GROUP BY o.order_id, o.order_status, o.total_amount, o.shipping_address,
+               o.created_at, o.shipped_at, o.delivered_at, u.username, u.email
+      ORDER BY o.created_at DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "user_id"
+        type: "integer"
+        description: "User's unique identifier"
+        required: true
+        constraints:
+          minimum: 1
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of orders to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of orders to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              order_id:
+                type: "integer"
+              order_status:
+                type: "string"
+              total_amount:
+                type: "number"
+              shipping_address:
+                type: "string"
+              created_at:
+                type: "string"
+              shipped_at:
+                type: "string"
+              delivered_at:
+                type: "string"
+              item_count:
+                type: "integer"
+              username:
+                type: "string"
+              email:
+                type: "string"
+        count:
+          type: "integer"
+
+  # Query 2: Get detailed order with all items and product info
+  - name: "get_order_details"
+    title: "Get Order Details"
+    description: "Retrieves complete order details including all items and product information"
+
+    sql: |
+      SELECT
+        o.order_id,
+        COALESCE(o.order_status, '') as order_status,
+        COALESCE(o.total_amount, 0) as total_amount,
+        COALESCE(o.shipping_address, '') as shipping_address,
+        COALESCE(o.created_at, '') as created_at,
+        COALESCE(u.username, '') as username,
+        COALESCE(u.email, '') as email,
+        oi.order_item_id,
+        COALESCE(oi.quantity, 0) as quantity,
+        COALESCE(oi.unit_price, 0) as unit_price,
+        COALESCE(oi.subtotal, 0) as subtotal,
+        p.product_id,
+        COALESCE(p.name, '') as product_name,
+        COALESCE(p.description, '') as product_description,
+        COALESCE(c.category_name, '') as category_name
+      FROM orders o
+      INNER JOIN users u ON o.user_id = u.user_id
+      INNER JOIN order_items oi ON o.order_id = oi.order_id
+      INNER JOIN products p ON oi.product_id = p.product_id
+      INNER JOIN categories c ON p.category_id = c.category_id
+      WHERE o.order_id = :order_id
+      ORDER BY oi.order_item_id
+
+    parameters:
+      - name: "order_id"
+        type: "integer"
+        description: "Order's unique identifier"
+        required: true
+        constraints:
+          minimum: 1
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              order_id:
+                type: "integer"
+              order_status:
+                type: "string"
+              total_amount:
+                type: "number"
+              shipping_address:
+                type: "string"
+              created_at:
+                type: "string"
+              username:
+                type: "string"
+              email:
+                type: "string"
+              order_item_id:
+                type: "integer"
+              quantity:
+                type: "integer"
+              unit_price:
+                type: "number"
+              subtotal:
+                type: "number"
+              product_id:
+                type: "integer"
+              product_name:
+                type: "string"
+              product_description:
+                type: "string"
+              category_name:
+                type: "string"
+        count:
+          type: "integer"
+
+  # Query 3: Get orders by status
+  - name: "get_orders_by_status"
+    title: "Get Orders By Status"
+    description: "Retrieves all orders with a specific status"
+
+    sql: |
+      SELECT
+        o.order_id,
+        o.user_id,
+        COALESCE(u.username, '') as username,
+        COALESCE(o.order_status, '') as order_status,
+        COALESCE(o.total_amount, 0) as total_amount,
+        COALESCE(o.created_at, '') as created_at,
+        COALESCE(o.updated_at, '') as updated_at
+      FROM orders o
+      INNER JOIN users u ON o.user_id = u.user_id
+      WHERE o.order_status = :status
+      ORDER BY o.created_at DESC
+      LIMIT :limit OFFSET :offset
+
+    parameters:
+      - name: "status"
+        type: "string"
+        description: "Order status to filter by"
+        required: true
+        constraints:
+          enum: ["pending", "processing", "shipped", "delivered", "cancelled"]
+
+      - name: "limit"
+        type: "integer"
+        description: "Maximum number of orders to return"
+        required: false
+        default: 20
+        constraints:
+          minimum: 1
+          maximum: 100
+
+      - name: "offset"
+        type: "integer"
+        description: "Number of orders to skip for pagination"
+        required: false
+        default: 0
+        constraints:
+          minimum: 0
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              order_id:
+                type: "integer"
+              user_id:
+                type: "integer"
+              username:
+                type: "string"
+              order_status:
+                type: "string"
+              total_amount:
+                type: "number"
+              created_at:
+                type: "string"
+              updated_at:
+                type: "string"
+        count:
+          type: "integer"
+
+  # Query 4: Get order statistics
+  - name: "get_order_statistics"
+    title: "Get Order Statistics"
+    description: "Retrieves aggregate statistics about orders"
+
+    sql: |
+      SELECT
+        COUNT(*) as total_orders,
+        COUNT(CASE WHEN order_status = 'delivered' THEN 1 END) as delivered_orders,
+        COUNT(CASE WHEN order_status = 'pending' THEN 1 END) as pending_orders,
+        COUNT(CASE WHEN order_status = 'shipped' THEN 1 END) as shipped_orders,
+        COUNT(CASE WHEN order_status = 'cancelled' THEN 1 END) as cancelled_orders,
+        COALESCE(SUM(CASE WHEN order_status = 'delivered' THEN total_amount ELSE 0 END), 0) as total_revenue,
+        COALESCE(AVG(CASE WHEN order_status = 'delivered' THEN total_amount END), 0) as avg_order_value,
+        COUNT(DISTINCT user_id) as unique_customers,
+        COUNT(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 END) as orders_last_7d,
+        COUNT(CASE WHEN created_at >= datetime('now', '-30 days') THEN 1 END) as orders_last_30d
+      FROM orders
+
+    parameters: []
+
+    output_schema:
+      type: "object"
+      properties:
+        results:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              total_orders:
+                type: "integer"
+              delivered_orders:
+                type: "integer"
+              pending_orders:
+                type: "integer"
+              shipped_orders:
+                type: "integer"
+              cancelled_orders:
+                type: "integer"
+              total_revenue:
+                type: "number"
+              avg_order_value:
+                type: "number"
+              unique_customers:
+                type: "integer"
+              orders_last_7d:
+                type: "integer"
+              orders_last_30d:
+                type: "integer"
+        count:
+          type: "integer"

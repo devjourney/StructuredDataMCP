@@ -15,10 +15,10 @@ queries:
     sql: |
       SELECT
         user_id,
-        username,
-        email,
-        created_at,
-        last_login
+        COALESCE(username, '') as username,
+        COALESCE(email, '') as email,
+        COALESCE(created_at, '') as created_at,
+        COALESCE(last_login, '') as last_login
       FROM users
       WHERE user_id = :user_id
       LIMIT 1
@@ -68,13 +68,13 @@ queries:
     sql: |
       SELECT
         user_id,
-        username,
-        email,
-        created_at
+        COALESCE(username, '') as username,
+        COALESCE(email, '') as email,
+        COALESCE(created_at, '') as created_at
       FROM users
       WHERE
-        (username LIKE '%' || :search_term || '%' OR
-         email LIKE '%' || :search_term || '%')
+        (COALESCE(username, '') LIKE '%' || :search_term || '%' OR
+         COALESCE(email, '') LIKE '%' || :search_term || '%')
       ORDER BY created_at DESC
       LIMIT :limit OFFSET :offset
 
@@ -135,8 +135,8 @@ queries:
         COUNT(*) as total_users,
         COUNT(CASE WHEN last_login >= datetime('now', '-30 days') THEN 1 END) as active_users_30d,
         COUNT(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 END) as new_users_7d,
-        MIN(created_at) as first_user_date,
-        MAX(created_at) as latest_user_date
+        COALESCE(MIN(created_at), '') as first_user_date,
+        COALESCE(MAX(created_at), '') as latest_user_date
       FROM users
 
     parameters: []

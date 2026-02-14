@@ -19,6 +19,8 @@ CONFIG_DIR = PROJECT_ROOT / "config"
 
 async def initialize_tools():
     """Load query definitions and register tools on startup."""
+    import sys
+
     # Load server settings
     loader = QueryLoader(CONFIG_DIR)
     settings = loader.load_settings()
@@ -47,9 +49,10 @@ async def initialize_tools():
         mcp.add_tool(tool)
         tool_count += 1
 
-    print(f"✓ Loaded {tool_count} query tools from {CONFIG_DIR / 'queries'}")
-    print(f"✓ Database: {db_path}")
-    print(f"✓ Server: {settings.server.name} v{settings.server.version}")
+    # Write to stderr to avoid corrupting MCP protocol on stdout
+    print(f"✓ Loaded {tool_count} query tools from {CONFIG_DIR / 'queries'}", file=sys.stderr)
+    print(f"✓ Database: {db_path}", file=sys.stderr)
+    print(f"✓ Server: {settings.server.name} v{settings.server.version}", file=sys.stderr)
 
 
 if __name__ == "__main__":

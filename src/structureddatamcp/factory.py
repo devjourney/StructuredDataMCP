@@ -61,9 +61,18 @@ class ToolFactory:
         func_code = f"""
 async def {query_def.name}({params_signature}):
     '''Execute the database query with provided parameters.'''
+    import sys
     arguments = {{{", ".join(f'"{name}": {name}' for name in param_names)}}}
-    result = await executor.execute_query(query_def, arguments)
-    return result
+    print(f"[DEBUG] Tool '{query_def.name}' called with: {{arguments}}", file=sys.stderr)
+    try:
+        result = await executor.execute_query(query_def, arguments)
+        print(f"[DEBUG] Tool '{query_def.name}' result count: {{result.get('count', 0)}}", file=sys.stderr)
+        return result
+    except Exception as e:
+        print(f"[ERROR] Tool '{query_def.name}' failed: {{type(e).__name__}}: {{e}}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        raise
 """
 
         # Execute the code to create the function

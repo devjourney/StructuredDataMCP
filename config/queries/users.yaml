@@ -52,11 +52,9 @@ queries:
                 description: "User's email address"
               created_at:
                 type: "string"
-                format: "date-time"
                 description: "Account creation timestamp"
               last_login:
                 type: "string"
-                format: "date-time"
                 description: "Last login timestamp"
         count:
           type: "integer"
@@ -123,7 +121,6 @@ queries:
                 type: "string"
               created_at:
                 type: "string"
-                format: "date-time"
         count:
           type: "integer"
           description: "Number of results returned"
@@ -163,11 +160,9 @@ queries:
                 description: "Users created in the last 7 days"
               first_user_date:
                 type: "string"
-                format: "date-time"
                 description: "Date of first user registration"
               latest_user_date:
                 type: "string"
-                format: "date-time"
                 description: "Date of most recent user registration"
         count:
           type: "integer"

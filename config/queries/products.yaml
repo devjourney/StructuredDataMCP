@@ -91,10 +91,10 @@ queries:
     parameters:
       - name: "search_term"
         type: "string"
-        description: "Search term to match against product name or description"
-        required: true
+        description: "Search term to match against product name or description (leave empty to return all products)"
+        required: false
+        default: ""
         constraints:
-          minLength: 1
           maxLength: 100
 
       - name: "limit"

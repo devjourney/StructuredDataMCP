@@ -83,10 +83,10 @@ queries:
     parameters:
       - name: "search_term"
         type: "string"
-        description: "Search term to match against username or email"
-        required: true
+        description: "Search term to match against username or email (leave empty to return all users)"
+        required: false
+        default: ""
         constraints:
-          minLength: 1
           maxLength: 100
 
       - name: "limit"

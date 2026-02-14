@@ -1,9 +1,10 @@
 """Factory for creating FastMCP tools from query definitions."""
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from fastmcp.tools import Tool
 from .models import QueryDefinition, QueryParameter
 from .executor import QueryExecutor
+import inspect
 
 
 class ToolFactory:
@@ -31,14 +32,46 @@ class ToolFactory:
         # Build JSON Schema for parameters
         parameters_schema = self._build_parameter_schema(query_def.parameters)
 
-        # Create async function for tool execution
-        async def execute_query(**kwargs: Any) -> dict[str, Any]:
-            """Execute the database query with provided parameters."""
-            result = await self.executor.execute_query(query_def, kwargs)
-            return result
+        # Create function with explicit parameters dynamically
+        executor = self.executor
 
-        # Set function metadata for FastMCP introspection
-        execute_query.__name__ = query_def.name
+        # Build parameter list with defaults
+        param_names = []
+        param_defaults = []
+        for param in query_def.parameters:
+            param_names.append(param.name)
+            if param.default is not None:
+                param_defaults.append(param.default)
+            elif not param.required:
+                param_defaults.append(None)
+
+        # Create function signature string
+        param_strs = []
+        default_start_idx = len(param_names) - len(param_defaults)
+        for i, name in enumerate(param_names):
+            if i >= default_start_idx:
+                default_val = param_defaults[i - default_start_idx]
+                param_strs.append(f"{name}=None")
+            else:
+                param_strs.append(name)
+
+        params_signature = ", ".join(param_strs)
+
+        # Build the function code
+        func_code = f"""
+async def {query_def.name}({params_signature}):
+    '''Execute the database query with provided parameters.'''
+    arguments = {{{", ".join(f'"{name}": {name}' for name in param_names)}}}
+    result = await executor.execute_query(query_def, arguments)
+    return result
+"""
+
+        # Execute the code to create the function
+        local_vars = {"executor": executor, "query_def": query_def}
+        exec(func_code, local_vars)
+        execute_query = local_vars[query_def.name]
+
+        # Set function documentation
         execute_query.__doc__ = query_def.description
 
         # Create Tool using from_function
@@ -50,7 +83,7 @@ class ToolFactory:
             output_schema=query_def.output_schema.model_dump() if query_def.output_schema else None,
         )
 
-        # Override parameters with our custom schema
+        # Override parameters with our custom schema to ensure correct types and constraints
         tool.parameters = parameters_schema
 
         # Add MCP metadata if provided

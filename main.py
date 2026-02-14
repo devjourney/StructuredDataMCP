@@ -1,5 +1,6 @@
 """StructuredDataMCP - Data-driven SQLite query MCP server."""
 
+import asyncio
 from pathlib import Path
 from fastmcp import FastMCP
 from src.structureddatamcp.loader import QueryLoader
@@ -51,15 +52,9 @@ async def initialize_tools():
     print(f"✓ Server: {settings.server.name} v{settings.server.version}")
 
 
-# Register startup handler
-@mcp.lifespan
-async def lifespan():
-    """Server lifespan - initialize tools on startup."""
-    await initialize_tools()
-    yield  # Server runs
-    # Cleanup if needed
-
-
 if __name__ == "__main__":
+    # Initialize tools before starting server
+    asyncio.run(initialize_tools())
+
     # Run the server
     mcp.run()

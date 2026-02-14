@@ -27,6 +27,7 @@ class QueryExecutor:
             max_results: Maximum rows to return
             query_timeout: Query execution timeout in seconds
         """
+        import sys
         self.db_path = Path(db_path)
         self.validator = validator
         self.max_results = max_results
@@ -34,6 +35,10 @@ class QueryExecutor:
 
         if not self.db_path.exists():
             raise FileNotFoundError(f"Database not found: {db_path}")
+
+        # Debug: Show database info
+        print(f"[DEBUG] QueryExecutor initialized with database: {self.db_path.absolute()}", file=sys.stderr)
+        print(f"[DEBUG] Database size: {self.db_path.stat().st_size} bytes", file=sys.stderr)
 
     @asynccontextmanager
     async def get_connection(self):
@@ -87,7 +92,13 @@ class QueryExecutor:
 
         # Execute query
         try:
+            import sys
             async with self.get_connection() as conn:
+                # Debug: Verify database connection
+                test_cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 5")
+                tables = await test_cursor.fetchall()
+                print(f"[DEBUG] Database tables found: {[dict(t) for t in tables]}", file=sys.stderr)
+
                 cursor = await conn.execute(query_def.sql, processed_args)
 
                 # Fetch results with limit

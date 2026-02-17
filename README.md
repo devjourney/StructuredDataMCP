@@ -33,8 +33,12 @@ git clone <repository-url>
 cd StructuredDataMCP
 
 # Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate
+# Windows CMD: .venv\Scripts\activate
+# PowerShell:
+#   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+#   .\.venv\Scripts\Activate.ps1
 
 # Install dependencies
 pip install -e .
@@ -43,11 +47,16 @@ pip install -e .
 ### Set Up Sample Database
 
 ```bash
-# Create sample database with schema
+# Create sample database with schema or use the sample.db in the repo as-is
 sqlite3 examples/sample.db < examples/schema_migration.sql
 
 # Load sample data
 sqlite3 examples/sample.db < examples/sample_data.sql
+```
+
+### Check Sample DB Load and SQLite Version
+```bash
+python -c "import sqlite3; conn = sqlite3.connect('examples/sample.db'); print(sqlite3.sqlite_version)"
 ```
 
 ### Configure Claude Desktop
@@ -57,13 +66,17 @@ Add this server configuration to your Claude Desktop config file:
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
+In Windows, this will probably resolve to C:\Users\userid\AppData\Local\Claude\claude_desktop_config.json or C:\Users\userid\AppData\Roaming\Claude\claude_desktop_config.json.
+
+Now update the JSON file with something like:
+
 ```json
 {
   "mcpServers": {
     "structured-data": {
-      "command": "/Users/YOUR_USERNAME/Documents/projects/source/StructuredDataMCP/.venv/bin/python",
+      "command": "FULL_PATH_TO_CLONED_REPO_FOLDER/.venv/Scripts/python.exe",
       "args": [
-        "/Users/YOUR_USERNAME/Documents/projects/source/StructuredDataMCP/main.py"
+        "FULL_PATH_TO_CLONED_REPO_FOLDER/main.py"
       ],
       "env": {}
     }
@@ -71,14 +84,17 @@ Add this server configuration to your Claude Desktop config file:
 }
 ```
 
-**Important**: Replace `YOUR_USERNAME` with your actual username, or use the full absolute paths to both the Python interpreter and `main.py`.
+**Important**: Replace `FULL_PATH_TO_CLONED_REPO_FOLDER` with the path to the root folder where you cloned this repo. In Windows, it's okay to use forward slashes in the paths, e.g. C:/Users/userid/Documents/projects/StructuredDataMCP.
 
 ### Verify Installation
 
 1. Restart Claude Desktop
-2. Look for the 🔌 icon in the bottom-right corner
+2. Look for the 🔌 icon in the bottom-right corner (or open settings and look at the tools in the Developer section)
 3. Click it to see "structured-data" server connected
 4. You should see 18 available tools
+5. If the MCP doesn't load, check the Claude Desktop log in the same folder with the desktop configuration JSON file. If Claude doesn't fully stop, use force quit on MacOS to load it cleanly or these PowerShell commands in Windows:
+- Get-Process | Where-Object { $_.ProcessName -like "*claude*" }
+- Stop-Process -Name "Claude" -Force -ErrorAction SilentlyContinue
 
 Try asking Claude:
 - "Show me alice's order history"

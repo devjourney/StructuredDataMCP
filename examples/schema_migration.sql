@@ -1,12 +1,52 @@
--- Schema Migration: Add Relational Depth to StructuredDataMCP
--- This adds orders, reviews, and shopping cart functionality
+-- Full Schema: StructuredDataMCP E-Commerce Database
+-- Creates all tables needed to run the sample e-commerce database from scratch
 -- Run with: sqlite3 examples/sample.db < examples/schema_migration.sql
 
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
 
 -- ============================================================================
--- Table 1: orders
+-- Table 1: categories
+-- Product category taxonomy
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS categories (
+    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_name TEXT NOT NULL UNIQUE
+);
+
+-- ============================================================================
+-- Table 2: users
+-- Customer accounts
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+);
+
+-- ============================================================================
+-- Table 3: products
+-- Product catalog with inventory tracking
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL,
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    category_id INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+-- ============================================================================
+-- Table 4: orders
 -- Tracks customer purchase transactions with status workflow
 -- ============================================================================
 
@@ -30,7 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
 
 -- ============================================================================
--- Table 2: order_items
+-- Table 5: order_items
 -- Junction table linking orders to products with historical pricing
 -- ============================================================================
 
@@ -51,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
 
 -- ============================================================================
--- Table 3: reviews
+-- Table 6: reviews
 -- Many-to-many user ↔ product relationship with ratings and comments
 -- ============================================================================
 
@@ -81,7 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_user_product ON reviews(user_id, product_id);
 
 -- ============================================================================
--- Table 4: cart_items
+-- Table 7: cart_items
 -- Active shopping carts
 -- ============================================================================
 
@@ -105,5 +145,5 @@ CREATE INDEX IF NOT EXISTS idx_cart_items_product_id ON cart_items(product_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cart_user_product ON cart_items(user_id, product_id);
 
 -- ============================================================================
--- Migration complete
+-- Schema complete
 -- ============================================================================

@@ -91,7 +91,7 @@ Now update the JSON file with something like:
 1. Restart Claude Desktop
 2. Look for the 🔌 icon in the bottom-right corner (or open settings and look at the tools in the Developer section)
 3. Click it to see "structured-data" server connected
-4. You should see 18 available tools
+4. You should see 19 available tools
 5. If the MCP doesn't load, check the Claude Desktop log in the same folder with the desktop configuration JSON file. If Claude doesn't fully stop, use force quit on MacOS to load it cleanly or these PowerShell commands in Windows:
 - Get-Process | Where-Object { $_.ProcessName -like "*claude*" }
 - Stop-Process -Name "Claude" -Force -ErrorAction SilentlyContinue
@@ -114,7 +114,7 @@ users (6 records)
 
 **Maximum traversal depth**: 4 levels (users → orders → order_items → products → categories)
 
-## Available Tools (18 total)
+## Available Tools (19 total)
 
 ### User Queries (3)
 - `get_user_by_id` - Retrieve user by ID
@@ -141,10 +141,11 @@ users (6 records)
 - `get_user_cart` - Shopping cart items with current pricing
 - `get_cart_summary` - Cart totals and warnings
 
-### Analytics Queries (3)
+### Analytics Queries (4)
 - `get_users_by_product` - **Reverse traversal**: who bought a product
 - `get_popular_products` - Products ranked by sales
 - `get_top_customers` - Customers by lifetime value
+- `get_category_performance` - Categories ranked by revenue with customer reach and ratings
 
 ## Adding New Queries
 
@@ -356,7 +357,7 @@ source .venv/bin/activate
 python main.py
 
 # Should output:
-# ✓ Loaded 18 query tools from .../config/queries
+# ✓ Loaded 19 query tools from .../config/queries
 ```
 
 ### Testing Queries Directly
